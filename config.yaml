@@ -1,0 +1,19 @@
+# config.yaml
+
+current_env: local
+
+envs:
+  local:
+    es:
+      url: "http://127.0.0.1:9200"
+      username: ""
+      password: ""
+      timeout_milli: 1000
+
+defaults:
+  restful_server:
+    port: 9900
+    shutdown_wait_seconds: 5
+
+  mysql:
+    dsn: "root:21@tcp(127.0.0.1:3306)/sf_test?charset=utf8&timeout=10s"
