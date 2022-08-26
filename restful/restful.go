@@ -2,6 +2,7 @@ package restful
 
 import (
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/hylent/sf/logger"
 	"net/http"
@@ -15,9 +16,14 @@ type Response struct {
 	Data           interface{} `json:"data"`
 }
 
-type ErrorWithCode interface {
-	error
-	Code() int
+type E int
+
+func (x E) Error() string {
+	return fmt.Sprintf("E%08d", int(x))
+}
+
+func (x E) Code() int {
+	return int(x)
 }
 
 type CanHandleGet interface {
@@ -97,9 +103,8 @@ func (x *RouterConfig) registerTo(g *gin.RouterGroup) {
 }
 
 func Handle[IN any, OUT any](ctx *gin.Context, h func(ctx context.Context, in *IN, out *OUT) error) {
-	hCtx := context.TODO()
 	resp := &Response{}
-
+	hCtx := context.TODO()
 	in := new(IN)
 	out := new(OUT)
 
@@ -117,17 +122,17 @@ func Handle[IN any, OUT any](ctx *gin.Context, h func(ctx context.Context, in *I
 		}
 
 		// call handler
-		hrr := h(hCtx, in, out)
+		hErr := h(hCtx, in, out)
 
 		// check error
-		if hrr != nil {
-			if duck, duckOk := hrr.(ErrorWithCode); duckOk {
+		if hErr != nil {
+			if duck, duckOk := hErr.(E); duckOk {
 				resp.HttpStatusCode = http.StatusOK
 				resp.Code = duck.Code()
 				resp.Message = duck.Error()
 			} else {
 				logger.Warn("internal_error", logger.M{
-					"err": hrr.Error(),
+					"err": hErr.Error(),
 				})
 				resp.HttpStatusCode = http.StatusInternalServerError
 				resp.Code = -2

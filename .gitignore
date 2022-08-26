@@ -1,5 +1,7 @@
 .idea
 go.sum
+*.pb.go
+
 /bin
 /tmp
 /demo/public

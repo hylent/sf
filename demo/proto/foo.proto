@@ -1,0 +1,17 @@
+syntax="proto3";
+
+package proto;
+
+option go_package="github.com/hylent/sf/demo/proto";
+
+message FooRequest {
+  string what = 1;
+}
+
+message FooResponse {
+  string what = 1;
+}
+
+service Foo {
+  rpc Get(FooRequest) returns (FooResponse);
+}
