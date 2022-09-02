@@ -3,24 +3,23 @@ package config
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 )
 
-type yamlConfig struct {
+type YamlConfig struct {
 	currentEnv     string
 	segmentConfigs map[string]yaml.Node
 }
 
-func ParseFromYamlFile(file string) (Config, error) {
-	data, dataErr := ioutil.ReadFile(file)
+func ParseFromYamlFile(file string) (*YamlConfig, error) {
+	data, dataErr := os.ReadFile(file)
 	if dataErr != nil {
 		return nil, fmt.Errorf("config_file_read_fail: file=%s err=%v", file, dataErr)
 	}
 	return ParseFromYaml(data)
 }
 
-func ParseFromYaml(data []byte) (Config, error) {
+func ParseFromYaml(data []byte) (*YamlConfig, error) {
 	configs := struct {
 		CurrentEnv string                          `yaml:"current_env"`
 		Envs       map[string]map[string]yaml.Node `yaml:"envs"`
@@ -49,7 +48,7 @@ func ParseFromYaml(data []byte) (Config, error) {
 		segmentConfigs[k] = v
 	}
 
-	x := &yamlConfig{
+	x := &YamlConfig{
 		currentEnv:     currentEnv,
 		segmentConfigs: segmentConfigs,
 	}
@@ -57,11 +56,11 @@ func ParseFromYaml(data []byte) (Config, error) {
 	return x, nil
 }
 
-func (x *yamlConfig) GetCurrentEnv() string {
+func (x *YamlConfig) GetCurrentEnv() string {
 	return x.currentEnv
 }
 
-func (x *yamlConfig) Get(segment string, target interface{}) error {
+func (x *YamlConfig) Get(segment string, target interface{}) error {
 	node, nodeFound := x.segmentConfigs[segment]
 	if !nodeFound {
 		return fmt.Errorf("config_segment_missing: segment=%s", segment)
