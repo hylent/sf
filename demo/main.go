@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/hylent/sf/config"
-	"github.com/hylent/sf/demo/api"
 	"github.com/hylent/sf/demo/bs"
 	"github.com/hylent/sf/demo/proto"
 	"github.com/hylent/sf/logger"
@@ -15,8 +14,8 @@ import (
 	"github.com/hylent/sf/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"net"
 	"net/http"
+	"time"
 )
 
 func Main() {
@@ -31,16 +30,6 @@ func Main() {
 	}
 
 	switch *clientType {
-	case "gs":
-		listen, err := net.Listen("tcp", "127.0.0.1:9900")
-		if err != nil {
-			logger.Fatal("listen_fail", logger.M{
-				"err": err.Error(),
-			})
-		}
-		s := grpc.NewServer()
-		proto.RegisterFooServer(s, new(FooServiceImpl))
-		_ = s.Serve(listen)
 	case "g":
 		conn, err := grpc.Dial(
 			"127.0.0.1:9900",
@@ -54,11 +43,14 @@ func Main() {
 		defer conn.Close()
 		logger.Info("connected")
 		cli := proto.NewFooClient(conn)
-		req := &proto.FooRequest{What: "wtf"}
+		req := &proto.FooIn{What: "wtf"}
+		if time.Now().Unix()%2 == 0 {
+			req.What = "fuck"
+		}
 		resp, respErr := cli.Get(context.TODO(), req)
 		if respErr != nil {
 			logger.Fatal("rpc_fail", logger.M{
-				"err": respErr.Error(),
+				"err": fmt.Sprintf("[%T]%+v", respErr, respErr),
 			})
 		}
 		logger.Info("rpc_ret", logger.M{
@@ -82,7 +74,7 @@ func Main() {
 			ServerList: []server.Server{
 				&server.Grpc{
 					Setup: func(s *grpc.Server) {
-						proto.RegisterFooServer(s, new(FooServiceImpl))
+						proto.RegisterFooServer(s, bs.FooInstance)
 					},
 				},
 				&server.Http{
@@ -92,7 +84,7 @@ func Main() {
 								restful.LogPerRequest(),
 							},
 							Handlers: map[string]interface{}{
-								"/api/v1/foo": new(FooHandlerImpl),
+								"/api/v1/foo": bs.FooInstance,
 							},
 						}
 						s.Handler = rg.NewGinHandler()
@@ -114,27 +106,4 @@ func Main() {
 	<-util.Terminated(context.TODO(), s.Run)
 
 	logger.Info("bye")
-}
-
-type FooServiceImpl struct {
-	proto.UnimplementedFooServer
-}
-
-func (x *FooServiceImpl) Get(ctx context.Context, req *proto.FooRequest) (*proto.FooResponse, error) {
-	in := new(api.FooIn)
-	out := new(api.FooOut)
-	resp := new(proto.FooResponse)
-
-	in.What = req.What
-	err := bs.FooImplInstance.Get(ctx, in, out)
-	resp.What = out.What
-
-	return resp, err
-}
-
-type FooHandlerImpl struct {
-}
-
-func (x *FooHandlerImpl) HandleGet(ctx *gin.Context) {
-	restful.Handle(ctx, bs.FooImplInstance.Get)
 }

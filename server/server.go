@@ -20,7 +20,7 @@ type Default struct {
 }
 
 func (x *Default) Run(ctx context.Context) {
-	listener, listenerErr := net.Listen("tcp", fmt.Sprintf(":%d", x.Port))
+	listener, listenerErr := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", x.Port))
 	if listenerErr != nil {
 		logger.Warn("default_server_listen_fail", logger.M{
 			"err": listenerErr.Error(),

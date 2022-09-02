@@ -4,14 +4,16 @@ package proto;
 
 option go_package="github.com/hylent/sf/demo/proto";
 
-message FooRequest {
+message FooIn {
+  // @gotags: json:"what" form:"what"
   string what = 1;
 }
 
-message FooResponse {
+message FooOut {
+  // @gotags: json:"what"
   string what = 1;
 }
 
 service Foo {
-  rpc Get(FooRequest) returns (FooResponse);
+  rpc Get(FooIn) returns (FooOut);
 }

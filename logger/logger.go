@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -12,13 +13,17 @@ import (
 )
 
 var (
-	// BUILD_PWD=$(shell pwd)
-	// go build -ldflags "-X github.com/hylent/sf/logger.buildPwd=${BUILD_PWD}"
 	buildPwd string
 
 	currentLevel   = LevelOfDebug
 	currentPrinter = defaultLogPrinter()
 )
+
+func init() {
+	if _, file, _, fileLineOk := runtime.Caller(0); fileLineOk {
+		buildPwd = path.Dir(path.Dir(file)) + "/"
+	}
+}
 
 const (
 	LevelOfDebug int32 = iota

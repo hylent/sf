@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hylent/sf/logger"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -100,6 +101,60 @@ func (x *RouterConfig) registerTo(g *gin.RouterGroup) {
 		g2 := g.Group(uri)
 		group.registerTo(g2)
 	}
+}
+
+func WrapAsRestful[IN any, OUT any](h func(context.Context, *IN) (*OUT, error)) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		HandleAsRestful(ctx, h)
+	}
+}
+
+func HandleAsRestful[IN any, OUT any](ctx *gin.Context, h func(context.Context, *IN) (*OUT, error)) {
+	resp := &Response{}
+	hCtx := context.TODO()
+	in := new(IN)
+
+	for {
+		// parse request
+		bindFunc := ctx.ShouldBindJSON
+		if !strings.HasPrefix(ctx.ContentType(), "application/json") {
+			bindFunc = ctx.ShouldBind
+		}
+		if err := bindFunc(in); err != nil {
+			resp.HttpStatusCode = http.StatusBadRequest
+			resp.Code = -1
+			resp.Message = err.Error()
+			break
+		}
+
+		// call handler
+		out, hErr := h(hCtx, in)
+
+		// check error
+		if hErr != nil {
+			if duck, duckOk := hErr.(E); duckOk {
+				resp.HttpStatusCode = http.StatusOK
+				resp.Code = duck.Code()
+				resp.Message = duck.Error()
+			} else {
+				logger.Warn("internal_error", logger.M{
+					"err": hErr.Error(),
+				})
+				resp.HttpStatusCode = http.StatusInternalServerError
+				resp.Code = -2
+			}
+			break
+		}
+
+		// ok
+		resp.HttpStatusCode = http.StatusOK
+		resp.Code = 0
+		resp.Message = "OK"
+		resp.Data = out
+		break
+	}
+
+	ctx.JSON(resp.HttpStatusCode, resp)
 }
 
 func Handle[IN any, OUT any](ctx *gin.Context, h func(ctx context.Context, in *IN, out *OUT) error) {

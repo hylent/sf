@@ -1,4 +1,4 @@
-package api
+package bs
 
 import (
 	"github.com/hylent/sf/restful"
