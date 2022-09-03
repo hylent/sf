@@ -33,7 +33,7 @@ func (x *AdapterMysql) Init() error {
 func (x *AdapterMysql) Execute(sql string, args ...any) (sql.Result, error) {
 	startTp := time.Now()
 	ret, err := x.db.Exec(sql, args...)
-	logger.Debug("sql_execute", logger.M{
+	log.Debug("sql_execute", logger.M{
 		"sql":  sql,
 		"args": fmt.Sprintf("%+v", args),
 		"ret":  fmt.Sprintf("%#v", ret),
@@ -46,7 +46,7 @@ func (x *AdapterMysql) Execute(sql string, args ...any) (sql.Result, error) {
 func (x *AdapterMysql) Select(out interface{}, sql string, args ...interface{}) error {
 	startTp := time.Now()
 	err := x.db.Select(out, sql, args...)
-	logger.Debug("sql_query", logger.M{
+	log.Debug("sql_query", logger.M{
 		"sql":  sql,
 		"args": fmt.Sprintf("%+v", args),
 		"err":  fmt.Sprintf("%v", err),
@@ -67,7 +67,7 @@ func (x *AdapterMysql) Row(out interface{}, sql string, args ...interface{}) err
 		}
 		return nil
 	}()
-	logger.Debug("sql_row", logger.M{
+	log.Debug("sql_row", logger.M{
 		"sql":  sql,
 		"args": fmt.Sprintf("%+v", args),
 		"err":  fmt.Sprintf("%v", err),
@@ -79,7 +79,7 @@ func (x *AdapterMysql) Row(out interface{}, sql string, args ...interface{}) err
 func (x *AdapterMysql) Get(out interface{}, sql string, args ...interface{}) error {
 	startTp := time.Now()
 	err := x.db.Get(out, sql, args...)
-	logger.Debug("sql_get", logger.M{
+	log.Debug("sql_get", logger.M{
 		"sql":  sql,
 		"args": fmt.Sprintf("%+v", args),
 		"err":  fmt.Sprintf("%v", err),

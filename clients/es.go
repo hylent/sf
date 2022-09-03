@@ -52,7 +52,7 @@ func (x *EsClient) Init(ctx context.Context) error {
 		return fmt.Errorf("es_info_read_fail: err=%v", readErr)
 	}
 
-	logger.Info("es_connected", logger.M{
+	log.Info("es_connected", logger.M{
 		"url":  x.Url,
 		"info": info,
 	})

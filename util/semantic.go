@@ -67,7 +67,7 @@ func RunTaskList(maxConcurrency int, taskList []func()) {
 			defer wg.Done()
 			for index := range indexQueue {
 				taskList[index]()
-				logger.Debug("task_done", logger.M{
+				log.Debug("task_done", logger.M{
 					"groupId":       groupId,
 					"concurrencyId": concurrencyId,
 					"index":         index,

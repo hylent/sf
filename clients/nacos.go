@@ -23,6 +23,44 @@ type NacosClient struct {
 	client config_client.IConfigClient
 }
 
+type nacosLogger struct{}
+
+func (x *nacosLogger) Debug(args ...interface{}) {
+}
+
+func (x *nacosLogger) Info(args ...interface{}) {
+}
+
+func (x *nacosLogger) Warn(args ...interface{}) {
+	log.Warn("nacos_warn", logger.M{
+		"args": fmt.Sprintf("%+v", args),
+	})
+}
+
+func (x *nacosLogger) Error(args ...interface{}) {
+	log.Warn("nacos_error", logger.M{
+		"args": fmt.Sprintf("%+v", args),
+	})
+}
+
+func (x *nacosLogger) Debugf(fmt string, args ...interface{}) {
+}
+
+func (x *nacosLogger) Infof(fmt string, args ...interface{}) {
+}
+
+func (x *nacosLogger) Warnf(format string, args ...interface{}) {
+	log.Warn("nacos_warn", logger.M{
+		"msg": fmt.Sprintf(format, args),
+	})
+}
+
+func (x *nacosLogger) Errorf(format string, args ...interface{}) {
+	log.Warn("nacos_error", logger.M{
+		"msg": fmt.Sprintf(format, args),
+	})
+}
+
 func (x *NacosClient) Init() error {
 	param := vo.NacosClientParam{
 		ClientConfig: &constant.ClientConfig{
@@ -33,9 +71,8 @@ func (x *NacosClient) Init() error {
 			Password:            x.Password,
 			TimeoutMs:           x.TimeoutMilli,
 			NotLoadCacheAtStart: true,
-			LogDir:              "tmp",
 			CacheDir:            "tmp",
-			LogLevel:            "warn",
+			CustomLogger:        new(nacosLogger),
 		},
 		ServerConfigs: []constant.ServerConfig{
 			{
@@ -54,38 +91,28 @@ func (x *NacosClient) Init() error {
 	return nil
 }
 
-func (x *NacosClient) GetThenListen(dataId string, contentFunc func(content string) error) error {
+func (x *NacosClient) Get(dataId string) (<-chan string, error) {
 	content, contentErr := x.client.GetConfig(vo.ConfigParam{
 		DataId: dataId,
 		Group:  x.Group,
 	})
 	if contentErr != nil {
-		return fmt.Errorf("nacos_init_fail: err=%v", contentErr)
+		return nil, fmt.Errorf("nacos_init_fail: err=%v", contentErr)
 	}
 
-	if err := contentFunc(content); err != nil {
-		return fmt.Errorf("nacos_init_cb_fail: err=%v", err)
-	}
+	ch := make(chan string, 1)
+	ch <- content
 
 	listenErr := x.client.ListenConfig(vo.ConfigParam{
 		DataId: dataId,
 		Group:  x.Group,
 		OnChange: func(namespace, group, dataId, content string) {
-			if err := contentFunc(content); err != nil {
-				logger.Warn("nacos_cb_fail", logger.M{
-					"err":       err.Error(),
-					"namespace": namespace,
-					"group":     group,
-					"dataId":    dataId,
-					"content":   content,
-				})
-			}
+			ch <- content
 		},
 	})
-
 	if listenErr != nil {
-		return fmt.Errorf("nacos_listen_fail: err=%v", listenErr)
+		return nil, fmt.Errorf("nacos_listen_fail: err=%v", listenErr)
 	}
 
-	return nil
+	return ch, nil
 }

@@ -1,10 +1,9 @@
 package config
 
-const (
-	EnvNameOfEnv = "RUN_ENV"
-)
+import "github.com/hylent/sf/logger"
 
 type Config interface {
-	GetCurrentEnv() string
-	Get(segment string, target interface{}) error
+	Get(segment string, target any) error
 }
+
+var log = logger.NewLogger(nil, "github.com/hylent/sf/config")

@@ -1,4 +1,4 @@
-package restful
+package server
 
 import (
 	"context"
@@ -27,29 +27,13 @@ func (x E) Code() int {
 	return int(x)
 }
 
-type CanHandleGet interface {
-	HandleGet(ctx *gin.Context)
-}
-
-type CanHandlePost interface {
-	HandlePost(ctx *gin.Context)
-}
-
-type CanHandlePut interface {
-	HandlePut(ctx *gin.Context)
-}
-
-type CanHandleDelete interface {
-	HandleDelete(ctx *gin.Context)
-}
-
 func LogPerRequest() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		startTp := time.Now()
 
 		ctx.Next()
 
-		logger.Info("log_per_request", logger.M{
+		log.Info("log_per_request", logger.M{
 			"method": ctx.Request.Method,
 			"path":   ctx.Request.URL.Path,
 			"cost":   time.Now().Sub(startTp).Milliseconds(),
@@ -60,7 +44,7 @@ func LogPerRequest() gin.HandlerFunc {
 
 type RouterConfig struct {
 	Middlewares []gin.HandlerFunc
-	Handlers    map[string]interface{}
+	Handlers    map[string]map[string]gin.HandlerFunc
 	Groups      map[string]RouterConfig
 }
 
@@ -80,19 +64,9 @@ func (x *RouterConfig) registerTo(g *gin.RouterGroup) {
 		g.Use(x.Middlewares...)
 	}
 
-	for uri, handler := range x.Handlers {
-		// register handlers of gin
-		if duck, duckOk := handler.(CanHandleGet); duckOk {
-			g.GET(uri, duck.HandleGet)
-		}
-		if duck, duckOk := handler.(CanHandlePost); duckOk {
-			g.POST(uri, duck.HandlePost)
-		}
-		if duck, duckOk := handler.(CanHandlePut); duckOk {
-			g.PUT(uri, duck.HandlePut)
-		}
-		if duck, duckOk := handler.(CanHandleDelete); duckOk {
-			g.DELETE(uri, duck.HandleDelete)
+	for uri, handlers := range x.Handlers {
+		for method, handler := range handlers {
+			g.Handle(method, uri, handler)
 		}
 	}
 
@@ -103,13 +77,13 @@ func (x *RouterConfig) registerTo(g *gin.RouterGroup) {
 	}
 }
 
-func WrapAsRestful[IN any, OUT any](h func(context.Context, *IN) (*OUT, error)) gin.HandlerFunc {
+func WrapAsGin[IN any, OUT any](h func(context.Context, *IN) (*OUT, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		HandleAsRestful(ctx, h)
+		callAsGin(ctx, h)
 	}
 }
 
-func HandleAsRestful[IN any, OUT any](ctx *gin.Context, h func(context.Context, *IN) (*OUT, error)) {
+func callAsGin[IN any, OUT any](ctx *gin.Context, h func(context.Context, *IN) (*OUT, error)) {
 	resp := &Response{}
 	hCtx := context.TODO()
 	in := new(IN)
@@ -137,56 +111,7 @@ func HandleAsRestful[IN any, OUT any](ctx *gin.Context, h func(context.Context, 
 				resp.Code = duck.Code()
 				resp.Message = duck.Error()
 			} else {
-				logger.Warn("internal_error", logger.M{
-					"err": hErr.Error(),
-				})
-				resp.HttpStatusCode = http.StatusInternalServerError
-				resp.Code = -2
-			}
-			break
-		}
-
-		// ok
-		resp.HttpStatusCode = http.StatusOK
-		resp.Code = 0
-		resp.Message = "OK"
-		resp.Data = out
-		break
-	}
-
-	ctx.JSON(resp.HttpStatusCode, resp)
-}
-
-func Handle[IN any, OUT any](ctx *gin.Context, h func(ctx context.Context, in *IN, out *OUT) error) {
-	resp := &Response{}
-	hCtx := context.TODO()
-	in := new(IN)
-	out := new(OUT)
-
-	for {
-		// parse request
-		bindFunc := ctx.ShouldBindJSON
-		if ctx.ContentType() != "application/json" {
-			bindFunc = ctx.ShouldBind
-		}
-		if err := bindFunc(in); err != nil {
-			resp.HttpStatusCode = http.StatusBadRequest
-			resp.Code = -1
-			resp.Message = err.Error()
-			break
-		}
-
-		// call handler
-		hErr := h(hCtx, in, out)
-
-		// check error
-		if hErr != nil {
-			if duck, duckOk := hErr.(E); duckOk {
-				resp.HttpStatusCode = http.StatusOK
-				resp.Code = duck.Code()
-				resp.Message = duck.Error()
-			} else {
-				logger.Warn("internal_error", logger.M{
+				log.Warn("internal_error", logger.M{
 					"err": hErr.Error(),
 				})
 				resp.HttpStatusCode = http.StatusInternalServerError

@@ -1,4 +1,4 @@
-package demo
+package main
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/hylent/sf/demo/bs"
 	"github.com/hylent/sf/demo/proto"
 	"github.com/hylent/sf/logger"
-	"github.com/hylent/sf/restful"
 	"github.com/hylent/sf/server"
 	"github.com/hylent/sf/util"
 	"google.golang.org/grpc"
@@ -18,7 +17,9 @@ import (
 	"time"
 )
 
-func Main() {
+var log = logger.NewLogger(nil, "demo.main")
+
+func main() {
 	// deal flags
 	clientType := flag.String("t", "", "client type: g")
 	configFile := flag.String("c", "config.yaml", "config file. file format .yaml")
@@ -36,12 +37,12 @@ func Main() {
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {
-			logger.Fatal("dial_fail", logger.M{
+			log.Fatal("dial_fail", logger.M{
 				"err": err.Error(),
 			})
 		}
 		defer conn.Close()
-		logger.Info("connected")
+		log.Info("connected")
 		cli := proto.NewFooClient(conn)
 		req := &proto.FooIn{What: "wtf"}
 		if time.Now().Unix()%2 == 0 {
@@ -49,27 +50,28 @@ func Main() {
 		}
 		resp, respErr := cli.Get(context.TODO(), req)
 		if respErr != nil {
-			logger.Fatal("rpc_fail", logger.M{
+			log.Fatal("rpc_fail", logger.M{
 				"err": fmt.Sprintf("[%T]%+v", respErr, respErr),
 			})
 		}
-		logger.Info("rpc_ret", logger.M{
+		log.Info("rpc_ret", logger.M{
 			"resp": fmt.Sprintf("%#v", resp),
 		})
 		return
 	}
 
 	// read configs
-	conf, confErr := config.ParseFromYamlFile(*configFile)
+	conf, confErr := config.FromEnvYamlFile("RUN_ENV", *configFile)
 	if confErr != nil {
-		logger.Fatal("config_fail", logger.M{
+		log.Fatal("config_fail", logger.M{
 			"err": confErr.Error(),
 		})
 	}
 
 	// prepare server
 	s := &server.Default{
-		Port: 9900,
+		Address: "127.0.0.1",
+		Port:    9900,
 		Server: &server.Mixed{
 			ServerList: []server.Server{
 				&server.Grpc{
@@ -79,15 +81,17 @@ func Main() {
 				},
 				&server.Http{
 					Setup: func(s *http.Server) {
-						rg := &restful.RouterConfig{
+						rc := &server.RouterConfig{
 							Middlewares: []gin.HandlerFunc{
-								restful.LogPerRequest(),
+								server.LogPerRequest(),
 							},
-							Handlers: map[string]interface{}{
-								"/api/v1/foo": bs.FooInstance,
+							Handlers: map[string]map[string]gin.HandlerFunc{
+								"/api/v1/foo": {
+									http.MethodGet: server.WrapAsGin(bs.FooInstance.Get),
+								},
 							},
 						}
-						s.Handler = rg.NewGinHandler()
+						s.Handler = rc.NewGinHandler()
 					},
 				},
 			},
@@ -97,7 +101,7 @@ func Main() {
 	// setup server
 	{
 		if err := conf.Get("server", s); err != nil {
-			logger.Fatal("server_conf_fail", logger.M{
+			log.Fatal("server_conf_fail", logger.M{
 				"err": err.Error(),
 			})
 		}
@@ -105,5 +109,5 @@ func Main() {
 
 	<-util.Terminated(context.TODO(), s.Run)
 
-	logger.Info("bye")
+	log.Info("bye")
 }

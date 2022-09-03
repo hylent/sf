@@ -52,7 +52,7 @@ func (x *Mixed) Serve(ctx context.Context, listener net.Listener) error {
 	}
 	wg.Wait()
 
-	logger.Debug("mixed_server_fail", logger.M{
+	log.Debug("mixed_server_failures", logger.M{
 		"errStrList": errStrList,
 	})
 

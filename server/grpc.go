@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/hylent/sf/logger"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"net"
@@ -27,13 +26,13 @@ func (x *Grpc) Serve(ctx context.Context, listener net.Listener) error {
 		s.GracefulStop()
 	}()
 
-	logger.Debug("grpc_server_starting")
+	log.Debug("grpc_server_starting")
 
 	if err := s.Serve(listener); err != nil {
 		return fmt.Errorf("grpc_server_fail: err=%v", err)
 	}
 
-	logger.Debug("grpc_server_stopped")
+	log.Debug("grpc_server_stopped")
 
 	return nil
 }

@@ -25,18 +25,18 @@ func (x *Http) Serve(ctx context.Context, listener net.Listener) error {
 	go func() {
 		<-ctx.Done()
 		if err := s.Shutdown(context.Background()); err != nil {
-			logger.Warn("http_server_shutdown_fail", logger.M{
+			log.Warn("http_server_shutdown_fail", logger.M{
 				"err": err.Error(),
 			})
 		}
 	}()
 
-	logger.Debug("http_server_starting")
+	log.Debug("http_server_starting")
 
 	if err := s.Serve(listener); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("http_server_fail: err=%v", err)
 	}
 
-	logger.Debug("http_server_stopped")
+	log.Debug("http_server_stopped")
 	return nil
 }

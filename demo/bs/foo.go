@@ -2,10 +2,8 @@ package bs
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
 	"github.com/hylent/sf/demo/proto"
 	"github.com/hylent/sf/logger"
-	"github.com/hylent/sf/restful"
 )
 
 var (
@@ -17,7 +15,7 @@ type Foo struct {
 }
 
 func (x *Foo) Get(ctx context.Context, in *proto.FooIn) (*proto.FooOut, error) {
-	logger.Debug("bs.Foo.Get", logger.M{
+	log.Debug("bs.Foo.Get", logger.M{
 		"what": in.What,
 	})
 
@@ -28,8 +26,4 @@ func (x *Foo) Get(ctx context.Context, in *proto.FooIn) (*proto.FooOut, error) {
 	out := new(proto.FooOut)
 	out.What = in.What
 	return out, nil
-}
-
-func (x *Foo) HandleGet(ctx *gin.Context) {
-	restful.HandleAsRestful(ctx, x.Get)
 }
